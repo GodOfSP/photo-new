@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.fnhelper.photo">
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- android 8.0 安装 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+        android:name=".MyApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_luancher"
+        android:label="@string/app_name"
+        android:usesCleartextTraffic="true"
+        android:roundIcon="@mipmap/ic_luancher_r"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <activity android:name=".MainActivity" />
+
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="com.fnhelper.photo.FileProvider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths_public" />
+        </provider>
+
+        <activity android:name=".SplashActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".AddNewPhotoWordActivity"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".LoginActivity"
+            android:launchMode="singleTask" />
+        <activity android:name=".TelLoginActivity" />
+        <activity android:name=".mine.BindSetNewPassWordActivity" />
+        <activity android:name=".mine.BindInputTelActivity" />
+        <activity android:name=".mine.AlbumInfoActivity" />
+        <activity
+            android:name=".mine.ModifyAlbumInfoAc"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustPan" />
+        <activity android:name=".mine.CheckSuccessAc" />
+        <activity android:name=".mine.ScanCodeAc" />
+        <activity android:name=".mine.MyCodeAc" />
+        <activity android:name=".mine.ToPresentPresentMaidAc" />
+
+        <!-- -->
+        <receiver android:name=".AppRegister" />
+
+        <activity android:name=".mine.PersonalCenterAc" />
+        <activity android:name=".mine.PresentRecordAc" />
+        <activity android:name=".mine.MaidRecordAc" />
+        <activity android:name=".myfans.SetRemarkNameAc" />
+        <activity android:name=".myfans.SetFansPermissionsAc" />
+        <activity android:name=".mine.VipMealAc" />
+        <activity android:name=".mine.SystemSettingAc" />
+        <activity android:name=".index.ShowVedioAc" />
+        <activity android:name=".index.VideoPlayerDetailedActivity" />
+        <activity android:name=".ModifyPhotoWordActivity" />
+        <activity android:name=".mine.NoticeAc" />
+        <activity android:name=".mine.NoticeDetailAc" />
+        <activity
+            android:name=".wxapi.WXPayEntryActivity"
+            android:exported="true"
+
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:scheme="wx04ff3ceebc3fc690" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".wxapi.WXEntryActivity"
+            android:launchMode="singleTop"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity android:name=".mine.QuestionAndReportAc" />
+        <activity
+            android:name=".mine.AboutAppAc"
+            android:theme="@style/AppThemeBlue" />
+        <activity android:name=".WebViewAc" />
+        <activity android:name=".index.NewsDeatilAc"/>
+        <activity android:name=".ModifyPhotoWordDetailActivity"/>
+    </application>
+
+</manifest>
