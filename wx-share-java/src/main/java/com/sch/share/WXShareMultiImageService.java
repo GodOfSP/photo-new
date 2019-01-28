@@ -13,7 +13,8 @@ import android.widget.ListView;
 
 import com.sch.share.utils.ClipboardUtil;
 
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by ls on 2019/1/24.
@@ -321,6 +322,8 @@ public class WXShareMultiImageService extends AccessibilityService {
     @Override
     public void onInterrupt() {
         //当服务要被中断时调用.会被调用多次
+
     }
+
 
 }

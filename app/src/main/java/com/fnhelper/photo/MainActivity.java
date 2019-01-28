@@ -2,7 +2,7 @@ package com.fnhelper.photo;
 
 import android.content.Intent;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.text.TextUtils;
 import android.view.View;
@@ -22,6 +22,7 @@ import com.fnhelper.photo.utils.STokenUtil;
 import com.fnhelper.photo.utils.UpdateAppUtils;
 import com.roughike.bottombar.BottomBar;
 import com.roughike.bottombar.OnTabSelectListener;
+import com.sch.share.WXShareMultiImageHelper;
 
 import java.util.ArrayList;
 
@@ -147,7 +148,7 @@ public class MainActivity extends BaseActivity {
         fragments.add(MyInterstFrafment.newInstance("", ""));
         fragments.add(MyFansFrafment.newInstance("", ""));
         fragments.add(MineFragment.newInstance("", ""));
-        viewPager.setAdapter(new FragmentPagerAdapter(getSupportFragmentManager()) {
+        viewPager.setAdapter(new FragmentStatePagerAdapter(getSupportFragmentManager()) {
             @Override
             public Fragment getItem(int position) {
                 return fragments.get(position);
@@ -220,4 +221,9 @@ public class MainActivity extends BaseActivity {
         });
     }
 
+    @Override
+    protected void onDestroy() {
+        WXShareMultiImageHelper.clearTmpFile(this);
+        super.onDestroy();
+    }
 }

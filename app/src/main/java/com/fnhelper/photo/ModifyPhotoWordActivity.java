@@ -223,6 +223,7 @@ public class ModifyPhotoWordActivity extends BaseActivity implements View.OnClic
             chooseMode = PictureMimeType.ofImage();
             for (int i = 0; i < rowsBean.getSImagesUrl().split(",").length; i++) {
             selectList.add(new LocalMedia(ImageUtil.getCachedImageOnDisk(Uri.parse(rowsBean.getSImagesUrl().split(",")[i]),ModifyPhotoWordActivity.this).getPath(), 200, PictureMimeType.ofImage(), "image/jpeg"));
+
             }
 
         } else {
@@ -1250,7 +1251,10 @@ public class ModifyPhotoWordActivity extends BaseActivity implements View.OnClic
             ArrayList<File> files = new ArrayList<>();
             for (int i = 0; i < selectList.size(); i++) {
                 stringBuffer.append(ImageUtil.getBase64(selectList.get(i).getPath()));
-                files.add(new File(selectList.get(i).getPath()));
+                File tFile = new File(selectList.get(i).getPath());
+                files.add(tFile);
+                sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                        Uri.parse(tFile.getAbsolutePath())));//更新图库
                 if (i != selectList.size() - 1) {
                     stringBuffer.append(",");
                 }

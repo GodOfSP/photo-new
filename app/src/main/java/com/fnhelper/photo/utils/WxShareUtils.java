@@ -2,7 +2,6 @@ package com.fnhelper.photo.utils;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -21,10 +20,12 @@ import android.widget.Toast;
 import com.fnhelper.photo.R;
 import com.fnhelper.photo.beans.CanShareBean;
 import com.fnhelper.photo.beans.CheckCodeBean;
+import com.fnhelper.photo.beans.NewsListBean;
 import com.fnhelper.photo.interfaces.Constants;
 import com.fnhelper.photo.interfaces.RetrofitService;
 import com.fnhelper.photo.mine.VipMealAc;
 import com.luck.picture.lib.permissions.RxPermissions;
+import com.sch.share.WXShareMultiImageHelper;
 import com.tbruyelle.rxpermissions2.Permission;
 import com.tencent.mm.opensdk.modelmsg.SendMessageToWX;
 import com.tencent.mm.opensdk.modelmsg.WXMediaMessage;
@@ -58,32 +59,20 @@ public class WxShareUtils {
 
     private Activity mActivity;
     private String msImageTextId; //动态id
-    private ArrayList<File> mFiles; // 文件列表
+    private ArrayList<File> mFiles = null; // 文件列表
+    private NewsListBean.DataBean.RowsBean data; //
     private String word = ""; // 图文的文字
     private String videoUrl = ""; // 视频路径
     private boolean needFinishThis = false; // 需要关闭当前页面吗?
 
     public WxShareUtils(final Activity activity, final String sImageTextId) {
 
-        //请求权限
-        new com.tbruyelle.rxpermissions2.RxPermissions((FragmentActivity) activity).requestEach(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
-                .subscribe(new Consumer<Permission>() {
-                    @Override
-                    public void accept(Permission permission) throws Exception {
-                        if (permission.granted) {
-                            // 用户已经同意该权限
-                            mActivity = activity;
-                            msImageTextId = sImageTextId;
-                            initSharePop();
 
-                        } else if (permission.shouldShowRequestPermissionRationale) {
-                            // 用户拒绝了该权限，没有选中『不再询问』（Never ask again）,那么下次再次启动时，还会提示请求权限的对话框
+        // 用户已经同意该权限
+        mActivity = activity;
+        msImageTextId = sImageTextId;
+        initSharePop();
 
-                        } else {
-                            // 用户拒绝了该权限，并且选中『不再询问』
-                        }
-                    }
-                });
 
     }
 
@@ -271,64 +260,29 @@ public class WxShareUtils {
                         @Override
                         public void accept(Boolean aBoolean) throws Exception {
                             if (aBoolean) {
-                                //初始化微信
-                                if (wxAPI == null) {
-                                    wxAPI = WXAPIFactory.createWXAPI(mActivity, Constants.WECHAT_APPID, true);
-                                }
-                                if (!wxAPI.isWXAppInstalled()) {//检查是否安装了微信
-                                    showBottom(mActivity, "没有安装微信");
-                                    return;
-                                }
-                                wxAPI.registerApp(Constants.WECHAT_APPID);
-
-
-                                //这一步一定要clear,不然分享了朋友圈马上分享好友图片就会翻倍
-
 
                                 new Thread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        //这一步一定要clear,不然分享了朋友圈马上分享好友图片就会翻倍
+                                        final ArrayList<Uri> imageUris = new ArrayList<Uri>();
+                                        if (mFiles == null || mFiles.size()==0) {//如果还没有设置要分享的文件列表
+                                            ArrayList<File> files = new ArrayList<>();
 
-
-                                        try {
-
-                                            Intent intent = new Intent(Intent.ACTION_SEND);
-                                            intent.setAction(Intent.ACTION_SEND_MULTIPLE);
-                                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-
-                                            ComponentName comp;
-
-                                            if (t) {
-                                                ArrayList<Uri> imageUris = new ArrayList<Uri>();
-                                                for (File f : mFiles) {
-                                                    imageUris.add(ImageUtil.getImageContentUri(f, mActivity));
-                                                }
-
-                                                intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, imageUris);
-                                                intent.setType("image");
-                                                comp = new ComponentName("com.tencent.mm", "com.tencent.mm.ui.tools.ShareImgUI");
-                                            } else {
-                                                ArrayList<Uri> imageUris = new ArrayList<Uri>();
-                                                imageUris.add(ImageUtil.getImageContentUri(mFiles.get(0), mActivity));
-                                                intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, imageUris);
-                                                intent.setType("image");
-                                                comp = new ComponentName("com.tencent.mm", "com.tencent.mm.ui.tools.ShareToTimeLineUI");
-                                                intent.putExtra("Kdescription", "分享朋友圈的图片说明");
-
-
+                                            for (int i = 0; i < data.getSImagesUrl().split(",").length; i++) {
+                                                files.add(ImageUtil.saveImageToSdCard(mActivity, data.getSImagesUrl().split(",")[i]));
                                             }
-                                            intent.setComponent(comp);
+                                            setPath(files);
+                                            mFiles.clear();
 
-
-                                            mActivity.startActivity(Intent.createChooser(intent, "分享图片"));
-
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
                                         }
 
-                                        handler.sendEmptyMessage(1);
+                                        if (t) {
+                                            //朋友
+                                            WXShareMultiImageHelper.shareToSession(mActivity, imageUris, word);
+                                        } else {  //朋友圈
+                                            WXShareMultiImageHelper.shareToTimeline(mActivity, imageUris, word, true);
+
+                                        }
 
                                     }
                                 }).start();
@@ -364,7 +318,7 @@ public class WxShareUtils {
 
 
                                 WXMediaMessage msg = new WXMediaMessage(video);
-                                msg.title = "蜂鸟";
+                                msg.title = "虫虫微商相册";
                                 msg.description = "视频分享";
                                 Bitmap thumb = BitmapFactory.decodeResource(mActivity.getResources(), R.drawable.ic_video_play);
                                 /**
@@ -463,6 +417,11 @@ public class WxShareUtils {
     public void setPath(ArrayList<File> files) {
         mFiles = files;
     }
+
+    public void setData(NewsListBean.DataBean.RowsBean data) {
+        this.data = data;
+    }
+
 
     public void setWord(String word) {
         this.word = word;

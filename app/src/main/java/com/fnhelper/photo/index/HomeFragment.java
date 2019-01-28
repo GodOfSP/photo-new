@@ -1,12 +1,9 @@
 package com.fnhelper.photo.index;
 
 
-import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -41,7 +38,6 @@ import com.fnhelper.photo.ModifyPhotoWordActivity;
 import com.fnhelper.photo.R;
 import com.fnhelper.photo.base.recyclerviewadapter.BaseAdapterHelper;
 import com.fnhelper.photo.base.recyclerviewadapter.QuickAdapter;
-import com.fnhelper.photo.beans.CanShareBean;
 import com.fnhelper.photo.beans.CheckCodeBean;
 import com.fnhelper.photo.beans.NewsListBean;
 import com.fnhelper.photo.beans.PreviewItemBean;
@@ -50,28 +46,19 @@ import com.fnhelper.photo.interfaces.Constants;
 import com.fnhelper.photo.interfaces.RetrofitService;
 import com.fnhelper.photo.mine.MyCodeAc;
 import com.fnhelper.photo.mine.PersonalCenterAc;
-import com.fnhelper.photo.mine.VipMealAc;
 import com.fnhelper.photo.utils.DialogUtils;
 import com.fnhelper.photo.utils.DownloadUtil;
+import com.fnhelper.photo.utils.FnFileUtil;
 import com.fnhelper.photo.utils.FullyGridLayoutManager;
 import com.fnhelper.photo.utils.ImageUtil;
 import com.fnhelper.photo.utils.STokenUtil;
 import com.fnhelper.photo.utils.TimeFormatUtils;
 import com.fnhelper.photo.utils.TwinklingRefreshLayoutUtil;
+import com.fnhelper.photo.utils.WxShareUtils;
 import com.lcodecore.tkrefreshlayout.RefreshListenerAdapter;
 import com.lcodecore.tkrefreshlayout.TwinklingRefreshLayout;
-import com.luck.picture.lib.permissions.RxPermissions;
 import com.previewlibrary.GPreviewBuilder;
-import com.sch.share.WXShareMultiImageHelper;
-import com.tencent.mm.opensdk.modelmsg.SendMessageToWX;
-import com.tencent.mm.opensdk.modelmsg.WXMediaMessage;
-import com.tencent.mm.opensdk.modelmsg.WXVideoObject;
-import com.tencent.mm.opensdk.openapi.IWXAPI;
-import com.tencent.mm.opensdk.openapi.WXAPIFactory;
 import com.zyao89.view.zloading.ZLoadingDialog;
-import com.zyyoona7.popup.EasyPopup;
-import com.zyyoona7.popup.XGravity;
-import com.zyyoona7.popup.YGravity;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -82,7 +69,6 @@ import java.util.ArrayList;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.Unbinder;
-import io.reactivex.functions.Consumer;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -120,7 +106,7 @@ public class HomeFragment extends Fragment {
     @BindView(R.id.empty_page)
     RelativeLayout emptyPage;
 
-
+    private WxShareUtils wxShareUtils = null;
     private QuickAdapter<NewsListBean.DataBean.RowsBean> adapter;
     private boolean canLoadMore = false;
     private int pageNum = 1;
@@ -168,10 +154,11 @@ public class HomeFragment extends Fragment {
             }
         });
 
+        initLoadingDialog();
         initSearch();
         initTklRefreshLayout();
         initRecyclerView();
-        initSharePop();
+        initShare();
 
 
         return view;
@@ -197,6 +184,14 @@ public class HomeFragment extends Fragment {
 
     }
 
+    /**
+     * 初始化分享
+     */
+    private void initShare() {
+
+        wxShareUtils = new WxShareUtils(getActivity(), "");
+        wxShareUtils.setNeedFinishThis(false);
+    }
 
     private void initSearch() {
 
@@ -521,10 +516,15 @@ public class HomeFragment extends Fragment {
                         nowItem = item;
                         if (TextUtils.isEmpty(item.getSVideoUrl())) { //图片
                             nowWhich = 0;
+                            wxShareUtils.setData(nowItem);
                         } else {
                             nowWhich = 1;
+                            wxShareUtils.setVideoUrl(item.getSVideoUrl());
                         }
-                        checkCanShare(item.getID());
+                        wxShareUtils.setMsImageTextId(nowItem.getID());
+                        wxShareUtils.setnowWhich(nowWhich);
+                        wxShareUtils.showSharePop();
+
                     }
                 });
 
@@ -544,99 +544,6 @@ public class HomeFragment extends Fragment {
         recyclerView.setAdapter(adapter);
     }
 
-
-    /**
-     * 调用服务器分享接口
-     */
-    private void shareToOurSystem(String msImageTextId) {
-
-
-        Call<CheckCodeBean> call = RetrofitService.createMyAPI().Share(msImageTextId);
-        call.enqueue(new Callback<CheckCodeBean>() {
-            @Override
-            public void onResponse(Call<CheckCodeBean> call, Response<CheckCodeBean> response) {
-                if (response != null) {
-                    if (response.body() != null) {
-                        if (response.body().getCode() == CODE_SUCCESS) {
-                            //成功
-                            showBottom(getContext(), response.body().getInfo());
-                        } else if (response.body().getCode() == CODE_ERROR) {
-                            //失败
-                            showBottom(getContext(), response.body().getInfo());
-                        } else if (response.body().getCode() == CODE_SERIVCE_LOSE) {
-                            //服务错误
-                            showBottom(getContext(), response.body().getInfo());
-                        } else if (response.body().getCode() == CODE_TOKEN) {
-                            //登录过期
-                            STokenUtil.check(getActivity());
-                            showBottom(getContext(), response.body().getInfo());
-                        } else if (response.body().getCode() == CODE_TOKEN) {
-                            //账号冻结
-                            showBottom(getContext(), response.body().getInfo());
-                        }
-                    }
-                }
-
-            }
-
-            @Override
-            public void onFailure(Call<CheckCodeBean> call, Throwable t) {
-                showBottom(getContext(), "网络异常！");
-            }
-        });
-    }
-
-
-    /**
-     * 看能不能分享
-     */
-    private void checkCanShare(String id) {
-
-
-        Call<CanShareBean> call = RetrofitService.createMyAPI().IsCanShare(id);
-        call.enqueue(new Callback<CanShareBean>() {
-            @Override
-            public void onResponse(Call<CanShareBean> call, Response<CanShareBean> response) {
-                if (response != null) {
-                    if (response.body() != null) {
-                        if (response.body().getCode() == CODE_SUCCESS) {
-                            //成功
-                            if (response.body().getData() != null) {
-                                if (response.body().getData().isIsCanShare()) {
-                                    showSharePop();
-                                } else {
-                                    DialogUtils.showAlertDialog(getContext(), "会员提示", "目前暂不能分享,是否去开通会员？确认？", new DialogUtils.OnCommitListener() {
-                                        @Override
-                                        public void onCommit() {
-                                            startActivity(new Intent(getContext(), VipMealAc.class));
-                                        }
-                                    }, null);
-                                }
-
-                            }
-                        } else if (response.body().getCode() == CODE_ERROR) {
-                            //失败
-                        } else if (response.body().getCode() == CODE_SERIVCE_LOSE) {
-                            //服务错误
-                        } else if (response.body().getCode() == CODE_TOKEN) {
-                            //登录过期
-                            STokenUtil.check(getActivity());
-                            showBottom(getContext(), response.body().getInfo());
-                        } else if (response.body().getCode() == CODE_TOKEN) {
-                            //账号冻结
-                            showBottom(getContext(), response.body().getInfo());
-                        }
-                    }
-                }
-
-            }
-
-            @Override
-            public void onFailure(Call<CanShareBean> call, Throwable t) {
-
-            }
-        });
-    }
 
     /**
      * 删除动态
@@ -768,9 +675,6 @@ public class HomeFragment extends Fragment {
 
     }
 
-    private IWXAPI wxAPI = null;
-    private static final int THUMB_SIZE = 150;
-    private EasyPopup mSharePop;
     private int nowWhich = 0;  //当前分享类型
     private NewsListBean.DataBean.RowsBean nowItem = null;
     private ZLoadingDialog zLoadingDialog;
@@ -792,7 +696,7 @@ public class HomeFragment extends Fragment {
         }
     };
 
-    private void initSharePop() {
+    private void initLoadingDialog() {
 
         zLoadingDialog = new ZLoadingDialog(getContext());
         zLoadingDialog.setLoadingBuilder(DOUBLE_CIRCLE)//设置类型
@@ -801,172 +705,7 @@ public class HomeFragment extends Fragment {
                 .setHintTextSize(16) // 设置字体大小 dp
                 .setHintTextColor(getResources().getColor(R.color.text_gray));  // 设置字体颜色
 
-        mSharePop = EasyPopup.create()
-                .setContentView(getContext(), R.layout.share_pop)
-                .setAnimationStyle(R.style.BottomPopAnim)
-                //是否允许点击PopupWindow之外的地方消失
-                .setFocusAndOutsideEnable(true)
-                .setWidth(ViewGroup.LayoutParams.MATCH_PARENT)
-                //允许背景变暗
-                .setBackgroundDimEnable(true)
-                //变暗的透明度(0-1)，0为完全透明
-                .setDimValue(0.4f)
-                //变暗的背景颜色
-                .setDimColor(Color.BLACK)
-                //指定任意 ViewGroup 背景变暗
-                .setDimView((ViewGroup) getActivity().findViewById(android.R.id.content))
-                .apply();
 
-
-        RelativeLayout friend = mSharePop.findViewById(R.id.friend_rl);
-        RelativeLayout cicler = mSharePop.findViewById(R.id.cicler_rl);
-
-        friend.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                shareNews(true);
-            }
-        });
-
-        cicler.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                shareNews(false);
-            }
-        });
-    }
-
-    private void showSharePop() {
-        mSharePop.showAtAnchorView(getActivity().findViewById(android.R.id.content), YGravity.ALIGN_BOTTOM, XGravity.CENTER, 0, 0);
-    }
-
-
-    /**
-     * 分享动态
-     * t 朋友圈或者朋友
-     * which  图片或视频
-     */
-    private void shareNews(final boolean t) {
-
-        mSharePop.dismiss();
-        zLoadingDialog.setHintText("处理中");
-        zLoadingDialog.show();
-
-        if (nowWhich == 0) {
-            //图文
-            //请求权限
-            new RxPermissions(getActivity()).request(Manifest.permission.READ_PHONE_STATE)
-                    .subscribe(new Consumer<Boolean>() {
-                        @Override
-                        public void accept(Boolean aBoolean) throws Exception {
-                            if (aBoolean) {
-                                //初始化微信
-                                if (wxAPI == null) {
-                                    wxAPI = WXAPIFactory.createWXAPI(getContext(), Constants.WECHAT_APPID, true);
-                                }
-                                if (!wxAPI.isWXAppInstalled()) {//检查是否安装了微信
-                                    showBottom(getContext(), "没有安装微信");
-                                    return;
-                                }
-                                wxAPI.registerApp(Constants.WECHAT_APPID);
-
-
-                                //这一步一定要clear,不然分享了朋友圈马上分享好友图片就会翻倍
-
-
-                                new Thread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        //这一步一定要clear,不然分享了朋友圈马上分享好友图片就会翻倍
-
-                                        try {
-
-                                            ArrayList<Uri> imageUris = new ArrayList<Uri>();
-
-                                            try {
-                                                for (int i = 0; i < nowItem.getSImagesUrl().split(",").length; i++) {
-                                                    imageUris.add(ImageUtil.getImageContentUri(ImageUtil.saveImageToSdCard(getContext(), nowItem.getSImagesUrl().split(",")[i]), getContext()));
-                                                }
-
-
-                                                if (t) {
-                                                    //朋友
-                                                    WXShareMultiImageHelper.shareToSession(getActivity(),imageUris,"sadsad");
-                                                } else {  //朋友圈
-                                                    WXShareMultiImageHelper.shareToTimeline(getActivity(),imageUris,"asdasdsad",true);
-
-                                                }
-
-
-                                            } catch (Exception e) {
-                                                e.printStackTrace();
-                                            }
-
-                                            zLoadingDialog.dismiss();
-                                            handler.sendEmptyMessage(1);
-
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                    }
-                                }).start();
-
-
-                            } else {
-                                Toast.makeText(getContext(), "请打开权限!", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
-        } else {
-            //视频
-
-            //请求权限
-            new RxPermissions(getActivity()).request(Manifest.permission.READ_PHONE_STATE)
-                    .subscribe(new Consumer<Boolean>() {
-                        @Override
-                        public void accept(Boolean aBoolean) throws Exception {
-                            if (aBoolean) {
-                                //初始化微信
-                                if (wxAPI == null) {
-                                    wxAPI = WXAPIFactory.createWXAPI(getContext(), Constants.WECHAT_APPID, true);
-                                }
-                                if (!wxAPI.isWXAppInstalled()) {//检查是否安装了微信
-                                    showBottom(getContext(), "没有安装微信");
-                                    return;
-                                }
-                                wxAPI.registerApp(Constants.WECHAT_APPID);
-
-
-                                WXVideoObject video = new WXVideoObject();
-                                video.videoUrl = nowItem.getSVideoUrl();
-
-                                WXMediaMessage msg = new WXMediaMessage(video);
-                                msg.title = nowItem.getSNickName();
-                                msg.description = nowItem.getSContext();
-                                Bitmap thumb = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.ic_video_play);
-                                /**
-                                 * 测试过程中会出现这种情况，会有个别手机会出现调不起微信客户端的情况。造成这种情况的原因是微信对缩略图的大小、title、description等参数的大小做了限制，所以有可能是大小超过了默认的范围。
-                                 * 一般情况下缩略图超出比较常见。Title、description都是文本，一般不会超过。
-                                 */
-                                Bitmap thumbBitmap = Bitmap.createScaledBitmap(thumb, THUMB_SIZE, THUMB_SIZE, true);
-                                thumb.recycle();
-                                msg.thumbData = ImageUtil.bmpToByteArray(thumbBitmap, true);
-
-                                SendMessageToWX.Req req = new SendMessageToWX.Req();
-                                req.transaction = ImageUtil.buildTransaction("video");
-                                req.message = msg;
-                                req.scene = t ? SendMessageToWX.Req.WXSceneSession : SendMessageToWX.Req.WXSceneTimeline;
-                                wxAPI.sendReq(req);
-
-                            } else {
-                                Toast.makeText(getContext(), "请打开权限!", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
-        }
-
-        ImageUtil.copyWord(getContext(), nowItem.getSContext());
-        shareToOurSystem(nowItem.getID());
     }
 
 
@@ -988,7 +727,7 @@ public class HomeFragment extends Fragment {
                     for (int i = 0; i < strings.length; i++) {
                         // 首先保存图片
                         Bitmap bitmap = ImageUtil.returnBitmap(Uri.parse(strings[i]));
-                        File appDir = new File(Environment.getExternalStorageDirectory(), "蜂鸟微商相册");
+                        File appDir = new File(FnFileUtil.getPath());
                         if (!appDir.exists()) {
                             appDir.mkdirs();
                         }

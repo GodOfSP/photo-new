@@ -6,6 +6,7 @@ import android.content.ClipboardManager;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -30,6 +31,7 @@ import com.facebook.imagepipeline.request.ImageRequest;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -372,8 +374,6 @@ public class ImageUtil {
         }
     }
 
-    public static String IMAGE_NAME = "iv_share_";
-    public static int i = 0;
 
     //根据网络图片url路径保存到本地
     public static final File saveImageToSdCard(Context context, String image) {
@@ -402,6 +402,13 @@ public class ImageUtil {
         }
 
         if (success) {
+            try {
+                MediaStore.Images.Media.insertImage(context.getContentResolver(), file.getAbsolutePath(), file.getName(), file.getName());//插入图库
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+            context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                    Uri.parse(file.getAbsolutePath())));//更新图库
             return file;
         } else {
             return null;
@@ -410,55 +417,13 @@ public class ImageUtil {
 
     //创建本地保存路径
     public static File createStableImageFile(Context context) throws IOException {
-        i++;
-        String imageFileName = IMAGE_NAME + i + ".jpg";
+        String imageFileName = System.currentTimeMillis()+ ".jpg";
         File storageDir = context.getExternalCacheDir();
         File image = new File(storageDir, imageFileName);
         return image;
     }
 
 
-    //根据网络视频url路径保存到本地
-    public static final File saveVedioToSdCard(Context context, String vPath) {
-        boolean success = false;
-        File file = null;
-        try {
-            file = createStableVFile(context, vPath);
-
-            URL url = new URL(vPath);
-            HttpURLConnection conn = null;
-            conn = (HttpURLConnection) url.openConnection();
-            InputStream is = null;
-            is = conn.getInputStream();
-            FileOutputStream outStream;
-            outStream = new FileOutputStream(file);
-            byte[] buffer = new byte[4 * 1024];
-            while (is.read(buffer) != -1) {
-                outStream.write(buffer);
-                outStream.flush();
-            }
-            outStream.flush();
-            outStream.close();
-            success = true;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        if (success) {
-            return file;
-        } else {
-            return null;
-        }
-    }
-
-    //创建本地保存路径
-    public static File createStableVFile(Context context, String fileName) throws IOException {
-        i++;
-        String imageFileName = IMAGE_NAME + i + "." + getExtensionName(fileName);
-        File storageDir = context.getExternalCacheDir();
-        File image = new File(storageDir, imageFileName);
-        return image;
-    }
 
     /*
      * Java文件操作 获取文件扩展名
