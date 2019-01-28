@@ -25,7 +25,9 @@ import com.fnhelper.photo.interfaces.Constants;
 import com.fnhelper.photo.interfaces.RetrofitService;
 import com.fnhelper.photo.mine.VipMealAc;
 import com.luck.picture.lib.permissions.RxPermissions;
+import com.sch.share.ShareInfo;
 import com.sch.share.WXShareMultiImageHelper;
+import com.sch.share.utils.ClipboardUtil;
 import com.tbruyelle.rxpermissions2.Permission;
 import com.tencent.mm.opensdk.modelmsg.SendMessageToWX;
 import com.tencent.mm.opensdk.modelmsg.WXMediaMessage;
@@ -269,20 +271,33 @@ public class WxShareUtils {
                                             ArrayList<File> files = new ArrayList<>();
 
                                             for (int i = 0; i < data.getSImagesUrl().split(",").length; i++) {
-                                                files.add(ImageUtil.saveImageToSdCard(mActivity, data.getSImagesUrl().split(",")[i]));
+                                                File filei = ImageUtil.saveImageToSdCard(mActivity, data.getSImagesUrl().split(",")[i]);
+                                                files.add(filei);
+                                                imageUris.add(ImageUtil.getImageContentUri(filei, mActivity));
                                             }
                                             setPath(files);
-                                            mFiles.clear();
 
+
+                                        }else {
+                                            for (int i = 0; i < mFiles.size(); i++) {
+                                                imageUris.add(ImageUtil.getImageContentUri(mFiles.get(i), mActivity));
+                                            }
                                         }
+                                        mFiles.clear();
+                                        mActivity.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                if (t) {
+                                                    //朋友
+                                                    WXShareMultiImageHelper.shareToSession(mActivity, imageUris, word);
+                                                } else {  //朋友圈
+                                                    WXShareMultiImageHelper.shareToTimeline(mActivity, imageUris, word, true);
 
-                                        if (t) {
-                                            //朋友
-                                            WXShareMultiImageHelper.shareToSession(mActivity, imageUris, word);
-                                        } else {  //朋友圈
-                                            WXShareMultiImageHelper.shareToTimeline(mActivity, imageUris, word, true);
+                                                }
+                                            }
+                                        });
 
-                                        }
+
 
                                     }
                                 }).start();

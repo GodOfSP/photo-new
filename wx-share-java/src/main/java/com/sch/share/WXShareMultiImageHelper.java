@@ -191,7 +191,7 @@ public class WXShareMultiImageHelper {
             public void run() {
                 if (!isAuto || getWXVersionCode(activity) < WX_V673) {
                     internalShareToTimeline(activity, text, imageList, false);
-                } else if (WXShareMultiImageHelper.isServiceEnabled(activity)) {
+                } else if (WXShareMultiImageHelper.isSettingOpen(activity)) {
                     internalShareToTimeline(activity, text, imageList, true);
                 } else {
                     new AlertDialog.Builder(activity)
@@ -339,7 +339,7 @@ public class WXShareMultiImageHelper {
     // 分享到微信 v7.0.0 。
     private static void shareToTimelineUIV700(Context context, String text, List<Uri> uriList, boolean isAuto) {
 
-        if (!TextUtils.isEmpty(text)) {
+     /*   if (!TextUtils.isEmpty(text)) {
             ClipboardUtil.setPrimaryClip(context, "", text);
             if (!isAuto) {
                 Toast.makeText(context, "文字已复制到剪切板\n图片已保存至相册\n打开朋友圈即可分享", Toast.LENGTH_LONG).show();
@@ -348,7 +348,7 @@ public class WXShareMultiImageHelper {
             if (!isAuto) {
                 Toast.makeText(context, "图片已保存至相册，打开朋友圈即可分享", Toast.LENGTH_LONG).show();
             }
-        }
+        }*/
 
         ShareInfo.setAuto(isAuto);
         ShareInfo.setText(text);
@@ -405,9 +405,8 @@ public class WXShareMultiImageHelper {
 
     /**
      * 检查系统设置：是否开启辅助服务
-     * @param service 辅助服务
      */
-    private static boolean isSettingOpen(Class service, Context cxt) {
+    private static boolean isSettingOpen( Context cxt) {
         try {
             int enable = Settings.Secure.getInt(cxt.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 0);
             if (enable != 1)
@@ -417,7 +416,7 @@ public class WXShareMultiImageHelper {
                 TextUtils.SimpleStringSplitter split = new TextUtils.SimpleStringSplitter(':');
                 split.setString(services);
                 while (split.hasNext()) { // 遍历所有已开启的辅助服务名
-                    if (split.next().equalsIgnoreCase(cxt.getPackageName() + "/" + service.getName()))
+                    if (split.next().equalsIgnoreCase(cxt.getPackageName() + "/" + WXShareMultiImageService.class.getName()))
                         return true;
                 }
             }
@@ -444,32 +443,13 @@ public class WXShareMultiImageHelper {
         }
     }
 
-
-
-    /**
-     * 检查服务是否开启。
-     */
-    public static boolean isServiceEnabled(Context context) {
-        AccessibilityManager manager = (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
-        if (manager == null) {
-            return false;
-        }
-        List<AccessibilityServiceInfo> infoList = manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
-        for (AccessibilityServiceInfo info : infoList) {
-            if (info.getId().equals(String.format("%s/%s", context.getPackageName(), WXShareMultiImageService.class.getName()))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /**
      * 打开服务。
      *
      * @param listener 打开服务结果监听。
      */
     public static void openService(final Context context, final OnOpenServiceListener listener) {
-        if (WXShareMultiImageHelper.isServiceEnabled(context)) {
+        if (WXShareMultiImageHelper.isSettingOpen(context)) {
             listener.onResult(true);
             return;
         }
@@ -479,7 +459,7 @@ public class WXShareMultiImageHelper {
                     public void onActivityResumed(Activity activity) {
                         if (context.getClass().equals(activity.getClass())) {
                             ((Application) context.getApplicationContext()).unregisterActivityLifecycleCallbacks(this);
-                            listener.onResult(WXShareMultiImageHelper.isServiceEnabled(context));
+                            listener.onResult(WXShareMultiImageHelper.isSettingOpen(context));
                         }
                     }
                 });
